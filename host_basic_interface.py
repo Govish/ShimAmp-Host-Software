@@ -1,10 +1,19 @@
+#python library utilities
 import serial
 import serial.tools.list_ports
-import sys
+import sys #for exit()
 
-import hbi_requests_tests
+#comms and message encoding utilitites
 import hbi_crc
 import hbi_cobs
+
+#command and request generators
+import fw_requests.hbi_requests_tests as hbi_requests_tests
+
+#firmware message handlers
+import fw_ack_nack.hbi_nack_handler as hbi_nack_handler
+import fw_ack_nack.hbi_command_ack_handler as hbi_ack_handler
+import fw_reponses.hbi_response_handler as hbi_response_handler
 
 # ============================================ STARTUP UTILITIES ==========================================
 def serial_connect():
@@ -63,7 +72,7 @@ def action_loop(crc_calc, serial_comms, dest_id):
             valid_action = True #leave from this inner loop
         
         else: #invalid command
-            print("     \--> Invalid action code, try again")
+            print("     \\--> Invalid action code, try again")
     
     print()
     print()
@@ -118,7 +127,15 @@ def decode_dispatch(byte_array):
     print("     \\==> CRC VALID")
 
     #CRC valid, dispatch message to the appropriate handler
-    print("Dispatching received message from Device {id} appropriately".format(id = byte_array[0]))
+    if(byte_array[1] in message_handlers):
+        print("Dispatching received message from Device {id} appropriately".format(id = byte_array[0]))
+        message_handlers[byte_array[1]](byte_array)
+    else:
+        print("Received uncategorized message from Device {id}".format(id = byte_array[0]))
+    
+    print()
+    print()
+
 
 #==================================== MAIN FUNCTION =================================
 if __name__ == "__main__":
@@ -157,6 +174,12 @@ if __name__ == "__main__":
     actions.update({'lr':list_request})
     actions.update({'exit':exit_app})
 
+    #create a dictionary that maps different firwmare --> host messages to appropriate callback functions
+    message_handlers = {}
+    message_handlers.update({hbi_nack_handler.NACK_MESSAGE_CODE: hbi_nack_handler.handle_nack})
+    message_handlers.update({hbi_ack_handler.ACK_MESSAGE_CODE: hbi_ack_handler.handle_ack})
+    message_handlers.update({hbi_response_handler.RESPONSE_MESSAGE_CODE: hbi_response_handler.handle_response})
+
     #we got here, basically go through the user entry infinite loop
     while(True):
         #quickly flush the serial buffer
@@ -171,6 +194,3 @@ if __name__ == "__main__":
         
         #decode and handle the received message from the firmware
         decode_dispatch(rx_bytes)
-
-        
-

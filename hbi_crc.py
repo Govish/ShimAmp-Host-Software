@@ -26,3 +26,6 @@ def append_crc(crc_calc, byte_sequence):
 
 def validate_crc(crc_calc, byte_sequence):
     return crc_calc.verify(bytes(byte_sequence), 0)
+
+if __name__ == "__main__":
+    print("This isn't the main function - run `host_basic_interface.py")

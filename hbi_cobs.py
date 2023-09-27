@@ -67,3 +67,6 @@ def decode(byte_sequence):
     if(next_sof_char_index != len(byte_sequence)):
         byte_sequence.clear()
         return
+    
+if __name__ == "__main__":
+    print("This isn't the main function - run `host_basic_interface.py")
