@@ -9,6 +9,7 @@ import hbi_cobs
 
 #command and request generators
 import fw_requests.hbi_requests_tests as hbi_requests_tests
+import fw_commands.hbi_command_tests as hbi_commands_tests
 
 #firmware message handlers
 import fw_ack_nack.hbi_nack_handler as hbi_nack_handler
@@ -161,10 +162,11 @@ if __name__ == "__main__":
 
     #maintain a dictionary mapping of command codes to commands
     commands = {}
+    commands.update(hbi_commands_tests.COMMANDS_TESTS) #add additional command codes this way
 
     #maintain a dictionary mapping of request codes to requests
     requests = {}
-    requests.update(hbi_requests_tests.REQUESTS_TESTS) #add additional command codes this way 
+    requests.update(hbi_requests_tests.REQUESTS_TESTS) #add additional request codes this way 
 
     #concatenate all those into acceptable actions
     actions = {}
