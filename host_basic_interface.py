@@ -10,6 +10,8 @@ import hbi_cobs
 #command and request generators
 import fw_requests.hbi_requests_tests as hbi_requests_tests
 import fw_commands.hbi_command_tests as hbi_commands_tests
+import fw_requests.hbi_requests_stage as hbi_request_stage
+import fw_commands.hbi_command_stage as hbi_commands_stage
 
 #firmware message handlers
 import fw_ack_nack.hbi_nack_handler as hbi_nack_handler
@@ -60,7 +62,7 @@ def get_endpoint_id():
 
 #=================================================== MAIN ACTION LOOP ================================================
 
-def action_loop(crc_calc, serial_comms, dest_id):
+def action_loop():
     valid_action = False
     while(not valid_action):
         #prompt the user for input
@@ -69,29 +71,53 @@ def action_loop(crc_calc, serial_comms, dest_id):
         
         if(action in actions): #valid command we can execute
             print("\\==> EXECUTING VALID COMMAND")
-            actions[action](crc_calc, serial_comms, dest_id) #all commands will need a serial object and the ID of their destination device
-            valid_action = True #leave from this inner loop
+            return actions[action] #return the function that the user wants to run
         
         else: #invalid command
             print("     \\--> Invalid action code, try again")
-    
-    print()
-    print()
 
 #==================================== HELP AND UTILITY COMMANDS =================================
 #maintain this function signature, so we can call all functions this way
-def list_commands(crc_calc, serial_comms, dest_id):
+def list_commands():
     print("Allowable command keys:")
     for command_key in commands:
         print(" >", command_key)
 
-def list_request(crc_calc, serial_comms, dest_id):
+    #empty message to send to the firmware 
+    return []
+
+def list_request():
     print("Allowable request keys:")
     for request_key in requests:
         print(" >", request_key)
 
-def exit_app(crc_calc, serial_comms, dest_id):
+    #empty message to send to the firmware 
+    return []
+
+def exit_app():
     sys.exit("### Host program terminated through user action ###")
+
+    #empty message to send to the firmware  (though should never get here)
+    return []
+
+#==================================== MESSAGE ENCODING AND DISPATCH =================================
+def pack_and_send_message(crc_calc, serial_comms, bytes_sequence):
+    print("Sending message to ID {id}".format(id = bytes_sequence[0]))
+
+    crc_val = hbi_crc.append_crc(crc_calc, bytes_sequence) #compute and append the appropriate CRC bytes to the message
+    print("     > Computed and appended CRC value: 0x{_crc_val:04X}".format(_crc_val = crc_val))
+    print("     > Message contents as follows:")
+    for i in range(len(bytes_sequence)):
+        print("         [{index}] -> 0x{value:02X}".format(index = i, value = bytes_sequence[i]))
+    
+    hbi_cobs.encode(bytes_sequence) #COBS encode our message with the appropriate
+    print("     > Computed COBS encoding of byte sequence")
+    print("     > Message contents as follows:")
+    for i in range(len(bytes_sequence)):
+        print("         [{index}] -> 0x{value:02X}".format(index = i, value = bytes_sequence[i]))
+
+    serial_comms.write(bytes_sequence) #write the bytes out to the serial port
+    print("     Sent data over serial")
 
 #==================================== INITIAL MESSAGE DECODING AND DISPATCH ===================================
 def decode_dispatch(byte_array):
@@ -133,10 +159,6 @@ def decode_dispatch(byte_array):
         message_handlers[byte_array[1]](byte_array)
     else:
         print("Received uncategorized message from Device {id}".format(id = byte_array[0]))
-    
-    print()
-    print()
-
 
 #==================================== MAIN FUNCTION =================================
 if __name__ == "__main__":
@@ -163,10 +185,12 @@ if __name__ == "__main__":
     #maintain a dictionary mapping of command codes to commands
     commands = {}
     commands.update(hbi_commands_tests.COMMANDS_TESTS) #add additional command codes this way
+    commands.update(hbi_commands_stage.COMMANDS_POWER_STAGE)
 
     #maintain a dictionary mapping of request codes to requests
     requests = {}
-    requests.update(hbi_requests_tests.REQUESTS_TESTS) #add additional request codes this way 
+    requests.update(hbi_requests_tests.REQUESTS_TESTS) #add additional request codes this way
+    requests.update(hbi_request_stage.REQUESTS_POWER_STAGE)
 
     #concatenate all those into acceptable actions
     actions = {}
@@ -187,12 +211,29 @@ if __name__ == "__main__":
         #quickly flush the serial buffer
         COMMS.reset_input_buffer()
 
-        #get the user input and send some kinda action message as necessary
-        action_loop(CRC_CALC, COMMS, ENDPOINT_ID)
+        #get the user input for which particular action they want to execute
+        action_to_do = action_loop()
+        message = action_to_do() # execute the particular action, and get the message the action wants to send to the firmware (if it exists)
 
-        #read from serial until we get an END OF FRAME character
-        #have to do some casting and converting to make the `read_until()' work as expected
-        rx_bytes = COMMS.read_until(expected=chr(hbi_cobs.END_OF_FRAME).encode('ASCII')) #read until we get an end of frame
+        #create some whitespace
+        print()
+        print()
         
-        #decode and handle the received message from the firmware
-        decode_dispatch(rx_bytes)
+        #if the particular action wants us to send a message to firmware
+        if(len(message) > 0):
+            #prepend the message with the endpoint ID
+            message.insert(0, ENDPOINT_ID)
+
+            #checksum, encode, and send the message
+            pack_and_send_message(CRC_CALC, COMMS, message)
+
+            #read from serial until we get an END OF FRAME character
+            #have to do some casting and converting to make the `read_until()' work as expected
+            rx_bytes = COMMS.read_until(expected=chr(hbi_cobs.END_OF_FRAME).encode('ASCII')) #read until we get an end of frame
+            
+            #decode and handle the received message from the firmware
+            decode_dispatch(rx_bytes)
+
+            #create some whitespace
+            print()
+            print()

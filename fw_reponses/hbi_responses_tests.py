@@ -1,5 +1,9 @@
 import struct #have to use this to unpack float
 
+'''
+TODO: 
+    - BETTER PAYLOAD LENGTH ERROR HANDLING
+'''
 
 RESPONSE_TEST_BYTE_CODE = 0
 RESPONSE_TEST_UINT32_CODE = 1

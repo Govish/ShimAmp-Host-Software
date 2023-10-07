@@ -19,8 +19,9 @@ NACK_MAPPING = {
 }
 
 def handle_nack(byte_stream) :
-    if(byte_stream[3] in NACK_MAPPING): #index of message that contains nack type
-        print("Received NACK message with the following reason:")
-        print("     ==>", NACK_MAPPING[byte_stream[3]])
+    if(byte_stream[2] > 0): #if we have some nack information in our payload
+        if(byte_stream[3] in NACK_MAPPING): #index of message that contains nack type
+            print("Received NACK message with the following reason:")
+            print("     ==>", NACK_MAPPING[byte_stream[3]])
     else:
         print("Received NACK message with UNKNOWN REASON")
