@@ -1,10 +1,12 @@
 import fw_reponses.hbi_responses_tests as responses_tests
+import fw_reponses.hbi_responses_stage as responses_stage
 
 
 RESPONSE_MESSAGE_CODE = 6
 
 RESPONSE_MAPPING = {}
 RESPONSE_MAPPING.update(responses_tests.RESPONSE_TEST_MAPPING) #add the handler for the test message responses
+RESPONSE_MAPPING.update(responses_stage.RESPONSE_STAGE_MAPPING) #add the handler for the power stage message responses
 
 def handle_response(byte_stream):
     if(byte_stream[3] in RESPONSE_MAPPING):
